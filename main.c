@@ -1,27 +1,35 @@
 #include <math.h>
-#include <SDL2/SDL.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <time.h>
+
+#include "src/graphics.h"
 
 void init(void);
+void handleEvents();
+void drawFrame();
 
 int8_t enc_delta(void);
 volatile int8_t delta;
 
+int running = 1;
 
 #define TIMESCALE_STEP 0.2
 float timescale = 1;
 
 #define STEP_DELAY 7
 #define BALL_RADIUS 10
-#define NUM_PARTICLES 1
+#define NUM_PARTICLES 5
 #define GRAVITY 9.8
 
 #define MIN_X 0
 #define MIN_Y 0
 #define MAX_X 320
 #define MAX_Y 240
+
+#define COEFF_REST 0.8
+#define COEFF_FRIC 0.8
 
 typedef struct {
   float x;
@@ -53,28 +61,26 @@ float boundY(float n, float p) {
   return n;
 }
 
-/*
+
 void drawBounds() {
-  drawLine(MIN_X, MIN_Y, MAX_X, MIN_Y, GRAY);
-  drawLine(MIN_X, MIN_Y, MIN_X, MAX_Y, GRAY);
-  drawLine(MAX_X, MAX_Y, MAX_X, MIN_Y, GRAY);
-  drawLine(MAX_X, MAX_Y, MIN_X, MAX_Y, GRAY);
+  SDL_RenderDrawLine(renderer, MIN_X, MIN_Y, MAX_X, MIN_Y);
+  SDL_RenderDrawLine(renderer, MIN_X, MIN_Y, MIN_X, MAX_Y);
+  SDL_RenderDrawLine(renderer, MAX_X, MAX_Y, MAX_X, MIN_Y);
+  SDL_RenderDrawLine(renderer, MAX_X, MAX_Y, MIN_X, MAX_Y);
 }
 
 void drawParticles() {
+  SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
   for (int i=0; i < NUM_PARTICLES; ++i) {
     Particle *particle = &particles[i];
-    drawCircle( particle->position.x, particle->position.y, BALL_RADIUS, WHITE);
+    drawCircle(renderer, particle->position.x, particle->position.y, particle->radius);
   }
+  SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 }
 
 void clearParticles() {
-  for (int i=0; i < NUM_PARTICLES; ++i) {
-    Particle *particle = &particles[i];
-    drawCircle( particle->position.x, particle->position.y, BALL_RADIUS, BLACK);
-  }
+  SDL_RenderClear(renderer);
 }
-*/
 
 void initializeParticles() {
   for (int i=0; i<NUM_PARTICLES; ++i) {
@@ -98,26 +104,47 @@ void applyForce(Particle *particle, Vector2 force, float dt) {
 
 void applyContainerForce(Particle *particle) {
   if (particle->position.x - particle->radius < MIN_X) {
-    particle->velocity.x = abs(particle->velocity.x) * 0.8;
+    particle->velocity.x = abs(particle->velocity.x) * COEFF_REST;
+    particle->velocity.y *= COEFF_FRIC;
     //particle->position.x += 2 * (MIN_X - (particle->position.x - particle->radius));
   }
   if (particle->position.x + particle->radius > MAX_X) {
-    particle->velocity.x = -1 * abs(particle->velocity.x) * 0.8;
+    particle->velocity.x = -1 * abs(particle->velocity.x) * COEFF_REST;
+    particle->velocity.y *= COEFF_FRIC;
     //particle->position.x -= 2 * ((particle->position.x + particle->radius) - MAX_X);
   }
   if (particle->position.y - particle->radius < MIN_Y) {
-    particle->velocity.y = abs(particle->velocity.y) * 0.8;
+    particle->velocity.y = abs(particle->velocity.y) * COEFF_REST;
+    particle->velocity.x *= COEFF_FRIC;
     //particle->position.y += 2 * (MIN_Y - (particle->position.y - particle->radius));
   }
   if (particle->position.y + particle->radius > MAX_Y) {
-    particle->velocity.y = -1 * abs(particle->velocity.y) * 0.8;
+    particle->velocity.y = -1 * abs(particle->velocity.y) * COEFF_REST;
+    particle->velocity.x *= COEFF_FRIC;
     //particle->position.y -= 2 * ((particle->position.y + particle->radius) - MAX_Y);
   }
 }
 
-//double deltaTime;
-float getDT() {
-  return 0.0001;
+/*void applyCollisions(Particle *particle) {
+  // iterate through each particle
+  // check its not our particle
+  // apply collision forces
+
+  for (int i=0; i<NUM_PARTICLES; ++i) {
+    if (*particles[i]) {
+
+    }
+  }
+}*/
+
+clock_t previousTime;
+clock_t currentTime;
+float deltaTime;
+double getDT() {
+  currentTime = clock();
+  deltaTime = (double) (currentTime - previousTime);
+  previousTime = currentTime;
+  return deltaTime;
   //deltaTime = TCNT1;
   //dt = (float) deltaTime * timescale * 0.00001;
   //TCNT1 = 0;
@@ -125,56 +152,43 @@ float getDT() {
 
 int main(void) {
     init();
-    return 0;
     float dt = 0;
-    for (;;) {
-      dt = getDT();
-      //clearParticles();
+    char buf[100];
+    while (userQuit == 0) {
+      drawBounds();
+      handleEvents();
+      dt = (getDT() / 100000) * timescale;
+      gcvt(dt, 6, buf);
+      printf("buffer: %s\n", buf);
+
+      clearParticles();
       for (int i=0; i<NUM_PARTICLES; ++i) {
         Particle *particle = &particles[i];
         applyContainerForce(particle);
         applyForce(particle, gravityForce(particle), dt);
+
+        /*if ((rand()/(double)RAND_MAX) > 0.999) {
+          applyForce(particle, (Vector2){randRange(-50, 50), -5000}, dt);
+        }*/
+
+        //applyCollisions(particle);
+
         particle->position.x += particle->velocity.x * dt;
         particle->position.y += particle->velocity.y * dt;
       }
-      //drawParticles();
+      drawParticles();
+
+      SDL_RenderPresent(renderer);
+
       //_delay_ms(STEP_DELAY);
       sleep(STEP_DELAY / 1000);
-
     }
-}
-
-
-const int SCREEN_WIDTH = 320;
-const int SCREEN_HEIGHT = 240;
-void initWindow() {
-  SDL_Window* window = NULL;
-  SDL_Surface* screenSurface = NULL;
-
-  if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-    printf("Could not initialise SDL: %s\n", SDL_GetError());
-    return;
-  }
-
-  window = SDL_CreateWindow("Physualiser", 
-                            SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 
-                            SCREEN_WIDTH, SCREEN_HEIGHT,
-                            SDL_WINDOW_SHOWN);
-
-  if (window == NULL) {
-    printf("Window could not be created: %s\n", SDL_GetError());
-    return;
-  }
-  screenSurface = SDL_GetWindowSurface(window);
-  SDL_FillRect(screenSurface, NULL, SDL_MapRGB( screenSurface->format, 0xFF, 0xFF, 0xFF ));
-  SDL_UpdateWindowSurface(window);
-  SDL_Delay(2000);
-
-  SDL_DestroyWindow(window);
-  SDL_Quit();
+    return 0;
 }
 
 void init(void) {
     initializeParticles();
     initWindow();
+    previousTime = clock();
+    currentTime = clock();
 }
