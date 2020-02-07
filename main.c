@@ -1,3 +1,4 @@
+#define __AVR_AT90USB1286__
 #include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -5,21 +6,25 @@
 #include <unistd.h>
 #include <time.h>
 
-#include "src/graphics.h"
+#include <avr/io.h>
+#include <util/delay.h>
+#include <avr/interrupt.h>
+
+#include "unifiedLcd.h"
 
 void init(void);
-void handleEvents();
-void drawFrame();
 
 int8_t enc_delta(void);
 volatile int8_t delta;
 
-#define TIMESCALE_STEP 0.2
+#define TIMESCALE_STEP 0.1
 float timescale = 1;
 
-#define NUM_PARTICLES 6
+#define NUM_PARTICLES 3
 
-#define STEP_DELAY 0
+#define __AVR_AT90USB1286__
+
+#define STEP_DELAY 15
 #define BALL_RADIUS 10
 #define GRAVITY 9.8
 #define GROUNDED_THRESHOLD 0.4
@@ -43,8 +48,6 @@ typedef struct {
   Vector2 velocity;
   float radius;
   float mass;
-  float restitution;
-  float friction;
   bool grounded;
 } Particle;
 
@@ -54,7 +57,7 @@ int randRange(int min, int max) {
   return (rand() % (max + 1 - min) + min);
 }
 
-void drawBounds() {
+/*void drawBounds() {
   SDL_RenderDrawLine(renderer, MIN_X, MIN_Y, MAX_X, MIN_Y);
   SDL_RenderDrawLine(renderer, MIN_X, MIN_Y, MIN_X, MAX_Y);
   SDL_RenderDrawLine(renderer, MAX_X, MAX_Y, MAX_X, MIN_Y);
@@ -76,6 +79,32 @@ void drawParticles() {
 
 void clearParticles() {
   SDL_RenderClear(renderer);
+}
+*/
+
+void drawBounds() {
+  drawLine(MIN_X, MIN_Y, MAX_X, MIN_Y, GRAY);
+  drawLine(MIN_X, MIN_Y, MIN_X, MAX_Y, GRAY);
+  drawLine(MAX_X, MAX_Y, MAX_X, MIN_Y, GRAY);
+  drawLine(MAX_X, MAX_Y, MIN_X, MAX_Y, GRAY);
+}
+
+void drawParticles() {
+  for (int i=0; i < NUM_PARTICLES; ++i) {
+    Particle *particle = &particles[i];
+    if (particle->grounded) {
+      drawCircle( particle->position.x, particle->position.y, BALL_RADIUS, RED);
+    } else {
+      drawCircle( particle->position.x, particle->position.y, BALL_RADIUS, WHITE);
+    }
+  }
+}
+
+void clearParticles() {
+  for (int i=0; i < NUM_PARTICLES; ++i) {
+    Particle *particle = &particles[i];
+    drawCircle( particle->position.x, particle->position.y, BALL_RADIUS, BLACK);
+  }
 }
 
 void initializeParticles() {
@@ -191,23 +220,22 @@ void applyCollisions() {
 clock_t previousTime;
 clock_t currentTime;
 float deltaTime;
+
 double getDT() {
-  currentTime = clock();
-  deltaTime = (double) (currentTime - previousTime);
-  previousTime = currentTime;
+  deltaTime = TCNT1;
+  TCNT1 = 0;
   return deltaTime;
-  //deltaTime = TCNT1;
-  //dt = (float) deltaTime * timescale * 0.00001;
-  //TCNT1 = 0;
 }
 
 int main(void) {
     init();
+    sei();
+
     float dt = 0;
-    while (userQuit == 0) {
-      drawBounds();
-      handleEvents();
-      dt = (getDT() / 100000) * timescale;
+    while (true) {
+      //drawBounds();
+      timescale -= TIMESCALE_STEP * enc_delta();
+      dt = (getDT()* 0.00001) * timescale;
 
       clearParticles();
       applyCollisions();
@@ -232,19 +260,81 @@ int main(void) {
       }
 
       drawParticles();
-
-      SDL_RenderPresent(renderer);
-
-      //_delay_ms(STEP_DELAY);
-      sleep(STEP_DELAY / 1000);
+      _delay_ms(STEP_DELAY);
     }
     return 0;
 }
 
 void init(void) {
-  initWindow();
-  previousTime = clock();
-  currentTime = clock();
-  //srand(time(NULL));
+
+  /* 8MHz clock, no prescaling (DS, p. 48) */
+  CLKPR = (1 << CLKPCE);
+  CLKPR = 0;
+
+  /* Configure I/O Ports */
+  DDRB  |=  _BV(PB7);   /* LED pin out */
+  PORTB &= ~_BV(PB7);   /* LED off */
+
+
+  DDRE &= ~_BV(PE4) & ~_BV(PE5);  /* Rot. Encoder inputs */
+  PORTE |= _BV(PE4) | _BV(PE5);   /* Rot. Encoder pull-ups */
+
+
+  /* Timer 0 for switch scan interrupt: */
+  TCCR0A = _BV(WGM01);  /* CTC Mode, DS Table 14-7 */
+  TCCR0B = _BV(CS01)
+          | _BV(CS00);   /* Prescaler: F_CPU / 64, DS Table 14-8 */
+
+  /* Timer 1 for physics engine */
+  TCCR1B |= (1 << CS10);
+
+  /* 1 ms for manual movement of rotary encoder: */
+  /* 1 ms --> 1000 Hz, Formula for CTC mode from  DS 14.6.2  */
+  /* Note that the formula gives the toggle frequency, which is half the interrupt frequency. */
+
+  OCR0A = (uint8_t)(F_CPU / (64.0 * 1000) - 1);
+
+  TIMSK0 |= _BV(OCIE0A);  /* Enable timer interrupt, DS 14.8.6  */
+
+  srand(time(NULL));
   initializeParticles();
+
+  init_lcd(1);
+}
+
+ISR( TIMER0_COMPA_vect ) {
+    static int8_t last;
+    int8_t new, diff;
+    uint8_t wheel;
+
+    /*
+    Scan rotary encoder
+    ===================
+    This is adapted from Peter Dannegger's code available at:
+    http://www.mikrocontroller.net/articles/Drehgeber
+    */
+
+    wheel = PINE;
+    new = 0;
+    if( wheel  & _BV(PE4) ) new = 3;
+    if( wheel  & _BV(PE5) )
+    new ^= 1;                  /* convert gray to binary */
+    diff = last - new;         /* difference last - new  */
+    if( diff & 1 ){            /* bit 0 = value (1) */
+        last = new;                /* store new as next last  */
+        delta += (diff & 2) - 1;   /* bit 1 = direction (+/-) */
+    }
+
+}
+
+/* read two step encoder */
+int8_t enc_delta() {
+    int8_t val;
+
+    cli();
+    val = delta;
+    delta &= 1;
+    sei();
+
+    return val >> 1;
 }
