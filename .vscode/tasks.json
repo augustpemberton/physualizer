@@ -24,7 +24,7 @@
     {
       "type": "shell",
       "label": "run make",
-      "command": "make && ./main",
+      "command": "make && ./bin/main",
       "group": {
         "kind": "build",
         "isDefault": true
