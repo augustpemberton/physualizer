@@ -46,3 +46,40 @@ float getTimerDelta() {
   TCNT1 = 0;
   return dt;
 }
+
+ISR( TIMER0_COMPA_vect ) {
+    static int8_t last;
+    int8_t new, diff;
+    uint8_t wheel;
+
+    /*
+    Scan rotary encoder
+    ===================
+    This is adapted from Peter Dannegger's code available at:
+    http://www.mikrocontroller.net/articles/Drehgeber
+    */
+
+    wheel = PINE;
+    new = 0;
+    if( wheel  & _BV(PE4) ) new = 3;
+    if( wheel  & _BV(PE5) )
+    new ^= 1;                  /* convert gray to binary */
+    diff = last - new;         /* difference last - new  */
+    if( diff & 1 ){            /* bit 0 = value (1) */
+        last = new;                /* store new as next last  */
+        delta += (diff & 2) - 1;   /* bit 1 = direction (+/-) */
+    }
+
+}
+
+/* read two step encoder */
+int8_t enc_delta() {
+    int8_t val;
+
+    cli();
+    val = delta;
+    delta &= 1;
+    sei();
+
+    return val >> 1;
+}

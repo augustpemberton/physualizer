@@ -1,10 +1,15 @@
 #include <stdbool.h>
+#include <stdlib.h>
 #include "physics.h"
 
-int minX;
-int minY;
-int maxX;
-int maxY;
+int minX = 0;
+int minY = 0;
+int maxX = 0;
+int maxY = 0;
+
+int randRange(int min, int max) {
+  return (rand() % (max + 1 - min) + min);
+}
 
 void initPhysics(int _minX, int _minY, int _maxX, int _maxY) {
   minX = _minX;
@@ -17,17 +22,41 @@ void initPhysics(int _minX, int _minY, int _maxX, int _maxY) {
 void initializeParticles() {
   float scale;
   for (int i=0; i<NUM_PARTICLES; ++i) {
-    scale = 1;
+    scale = randRange(1,4);
     particles[i].radius   = BALL_RADIUS * scale;
 
-    particles[i].position = (Vector2){minX + ((maxX-minX) / NUM_PARTICLES) * i,
-                                      minY + ((maxY-minY) / NUM_PARTICLES) * i};
-    particles[i].velocity = (Vector2){randRange(-50, 50), randRange(-50, 50)};
+    particles[i].position = (Vector2){minX + ((maxX-minX) / NUM_PARTICLES) * i + particles[i].radius,
+                                      minY + ((maxY-minY) / NUM_PARTICLES) * i + particles[i].radius};
+    particles[i].velocity = (Vector2){300, 400};
 
     particles[i].mass     = scale;
     particles[i].grounded = false;
+    particles[i].slowFrames = (Vector2){0, 0};
   }
 }
+
+/*void initializeParticles() {
+  for (int i=0; i<NUM_PARTICLES; ++i) {
+    particles[i].radius   = (1 + i) * 10;
+    particles[i].mass     = 1 + i;
+    particles[i].grounded = false;
+  }
+  //bottom left
+  //particles[0].position = (Vector2){50, 200};
+  //particles[0].velocity = (Vector2){50, -50};
+
+  //bottom right
+  //particles[0].position = (Vector2){200, 200};
+  //particles[0].velocity = (Vector2){-50, -50};
+
+  //top right
+  particles[1].position = (Vector2){200, 50};
+  particles[1].velocity = (Vector2){-50, 50};
+
+  //top left
+  particles[0].position = (Vector2){50, 50};
+  particles[0].velocity = (Vector2){50, 50};
+}*/
 
 Vector2 gravityForce(Particle *particle) {
   return (Vector2){0, particle->mass * GRAVITY};
@@ -40,38 +69,36 @@ void applyForce(Particle *particle, Vector2 force, float dt) {
 }
 
 void applyGravity(Particle *particle, float dt) {
-  if (particle->grounded == true && abs(particle->velocity.y) > GROUNDED_EXIT_THRESHOLD) {
+  if (particle->grounded && particle->velocity.y < -GROUNDED_EXIT_THRESHOLD) {
     particle->grounded = false;
   }
 
   if (!particle->grounded) {
     applyForce(particle, gravityForce(particle), dt);
-  } else {
-    particle->velocity.y = abs(particle->velocity.y);
   }
 }
 
 void applyContainerForce(Particle *particle) {
   if (particle->position.x - particle->radius < minX) {
-    particle->velocity.x = abs(particle->velocity.x) * COEFF_REST;
+    particle->velocity.x = -particle->velocity.x * COEFF_REST;
     particle->velocity.y *= COEFF_FRIC;
 
     particle->position.x += particle->radius - (particle->position.x - minX );
   }
   if (particle->position.x + particle->radius > maxX) {
-    particle->velocity.x = -1 * abs(particle->velocity.x) * COEFF_REST;
+    particle->velocity.x = -particle->velocity.x * COEFF_REST;
     particle->velocity.y *= COEFF_FRIC;
 
     particle->position.x -= particle->radius - (maxX - particle->position.x);
   }
   if (particle->position.y - particle->radius < minY) {
-    particle->velocity.y = abs(particle->velocity.y) * COEFF_REST;
+    particle->velocity.y = -particle->velocity.y * COEFF_REST;
     particle->velocity.x *= COEFF_FRIC;
 
     particle->position.y += particle->radius - (particle->position.y - minY );
   }
   if (particle->position.y + particle->radius > maxY) {
-    particle->velocity.y = -1 * abs(particle->velocity.y) * COEFF_REST;
+    particle->velocity.y = -particle->velocity.y * COEFF_REST;
     particle->velocity.x *= COEFF_FRIC;
 
     particle->position.y -= particle->radius - (maxY - particle->position.y);
@@ -83,9 +110,6 @@ void applyContainerForce(Particle *particle) {
 }
 
 void applyCollisions() {
-  // iterate through each particle
-  // check its not our particle
-  // apply collision forces
   float distance;
   for (int j=0; j<NUM_PARTICLES; ++j) {
     Particle *particle = &particles[j];
@@ -104,8 +128,29 @@ void applyCollisions() {
         float dtx = distanceToMove * cos(angle);
         float dty = distanceToMove * sin(angle);
 
-        particle->position = (Vector2){particle->position.x-abs(dtx), particle->position.y-abs(dty)};
-        particle2->position = (Vector2){particle2->position.x+abs(dtx), particle2->position.y+abs(dty)};
+        if (particle->position.x < particle2->position.x) {
+          if (particle->position.y > particle2->position.y) {
+            //printf("Case 1");
+            particle->position = (Vector2){particle->position.x-dtx, particle->position.y-dty};
+            particle2->position = (Vector2){particle2->position.x+dtx, particle2->position.y+dty};
+          } else {
+            //printf("Case 2");
+            particle->position = (Vector2){particle->position.x-dtx, particle->position.y-dty};
+            particle2->position = (Vector2){particle2->position.x+dtx, particle2->position.y+dty};
+
+          }
+        } else {
+          if (particle->position.y > particle2->position.y) {
+            //printf("Case 3");
+            particle->position = (Vector2){particle->position.x+dtx, particle->position.y+dty};
+            particle2->position = (Vector2){particle2->position.x-dtx, particle2->position.y-dty};
+          } else {
+            //printf("Case 4");
+            particle->position = (Vector2){particle->position.x+dtx, particle->position.y+dty};
+            particle2->position = (Vector2){particle2->position.x-dtx, particle2->position.y-dty};
+          }
+        }
+
 
         // A.v = (A.u * (A.m - B.m) + (2 * B.m * B.u)) / (A.m + B.m)
         // B.v = (B.u * (B.m - A.m) + (2 * A.m * A.u)) / (A.m + B.m)
@@ -121,7 +166,7 @@ void applyCollisions() {
         particle2->velocity.y = (bu.y * (particle2->mass - particle->mass) + (2 * particle->mass * au.y)) / k;
 
         // check for grounded state
-        if (particle->position.y < particle2->position.y) {
+        /*if (particle->position.y < particle2->position.y) {
           if (abs(particle->velocity.y) < GROUNDED_THRESHOLD && abs(particle->velocity.x) < GROUNDED_THRESHOLD) {
             particle->grounded = true;
           }
@@ -129,9 +174,18 @@ void applyCollisions() {
           if (abs(particle2->velocity.y) < GROUNDED_THRESHOLD && abs(particle2->velocity.x) < GROUNDED_THRESHOLD) {
             particle2->grounded = true;
           }
-        }
+        }*/
 
       }
     }
+  }
+}
+
+void dampenVelocity(Particle *particle, float dt) {
+  if (particle->grounded && particle->velocity.y < 0) {
+    particle->velocity.y = 0;
+  }
+  if (particle->grounded) {
+    particle->velocity.x *= (COEFF_FRIC * (dt));
   }
 }

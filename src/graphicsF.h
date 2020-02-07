@@ -3,10 +3,9 @@
 #include "particle.h"
 #endif
 
-#include <SDL2/SDL.h>
+#include "unifiedLcd.h"
 
 extern int userQuit;
-extern bool buttonPressed;
 
 void initGraphics(int width, int height);
 void handleEvents();
