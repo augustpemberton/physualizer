@@ -1,1 +1,5 @@
 bin/*
+build/*
+build/src/*
+_build/*
+.vscode/*
