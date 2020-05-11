@@ -7,6 +7,8 @@
 
 extern int userQuit;
 extern bool buttonPressed;
+extern bool speedUpPressed;
+extern bool slowDownPressed;
 
 void initGraphics(int width, int height);
 void handleEvents();

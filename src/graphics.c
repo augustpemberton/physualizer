@@ -14,6 +14,8 @@ float deltaTime;
 #define STEP_DELAY 15
 
 bool buttonPressed = false;
+bool speedUpPressed = false;
+bool slowDownPressed = false;
 
 void initGraphics(int width, int height) {
 
@@ -56,6 +58,29 @@ void handleEvents() {
       case SDL_MOUSEBUTTONUP:
         buttonPressed = false;
         break;
+
+      case SDL_KEYDOWN:
+        switch (event.key.keysym.sym) {
+          case SDLK_UP:
+            speedUpPressed = true;
+            break;
+          case SDLK_DOWN:
+            slowDownPressed = true;
+            break;
+        }
+        break;
+
+      case SDL_KEYUP:
+        switch (event.key.keysym.sym) {
+          case SDLK_UP:
+            speedUpPressed = false;
+            break;
+          case SDLK_DOWN:
+            slowDownPressed = false;
+            break;
+        }
+        break;
+
     }
   }
 }
@@ -113,9 +138,9 @@ void drawParticles(Particle particles[], int n) {
   SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
   for (int i=0; i < n; ++i) {
     Particle *particle = &particles[i];
-    if (particle->grounded) {
+    /*if (particle->grounded == true) {
       SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-    }
+    }*/
     drawParticle(particle->position.x, particle->position.y, particle->radius);
   }
   SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);

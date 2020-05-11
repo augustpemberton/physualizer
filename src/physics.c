@@ -4,8 +4,8 @@
 
 int minX = 0;
 int minY = 0;
-int maxX = 0;
-int maxY = 0;
+int maxX = 320;
+int maxY = 240;
 
 int randRange(int min, int max) {
   return (rand() % (max + 1 - min) + min);
@@ -22,12 +22,12 @@ void initPhysics(int _minX, int _minY, int _maxX, int _maxY) {
 void initializeParticles() {
   float scale;
   for (int i=0; i<NUM_PARTICLES; ++i) {
-    scale = randRange(1,4);
+    scale = (rand() / (double)RAND_MAX) * 3;
     particles[i].radius   = BALL_RADIUS * scale;
 
     particles[i].position = (Vector2){minX + ((maxX-minX) / NUM_PARTICLES) * i + particles[i].radius,
                                       minY + ((maxY-minY) / NUM_PARTICLES) * i + particles[i].radius};
-    particles[i].velocity = (Vector2){300, 400};
+    particles[i].velocity = (Vector2){200, 10};
 
     particles[i].mass     = scale;
     particles[i].grounded = false;
@@ -69,9 +69,7 @@ void applyForce(Particle *particle, Vector2 force, float dt) {
 }
 
 void applyGravity(Particle *particle, float dt) {
-  if (particle->grounded && particle->velocity.y < -GROUNDED_EXIT_THRESHOLD) {
-    particle->grounded = false;
-  }
+  checkUngrounded(particle);
 
   if (!particle->grounded) {
     applyForce(particle, gravityForce(particle), dt);
@@ -103,9 +101,8 @@ void applyContainerForce(Particle *particle) {
 
     particle->position.y -= particle->radius - (maxY - particle->position.y);
 
-    if (abs(particle->velocity.y) < GROUNDED_THRESHOLD && abs(particle->velocity.x) < GROUNDED_THRESHOLD) {
-      particle->grounded = true;
-    }
+    checkGrounded(particle);
+
   }
 }
 
@@ -165,27 +162,23 @@ void applyCollisions() {
         particle2->velocity.x = (bu.x * (particle2->mass - particle->mass) + (2 * particle->mass * au.x)) / k;
         particle2->velocity.y = (bu.y * (particle2->mass - particle->mass) + (2 * particle->mass * au.y)) / k;
 
-        // check for grounded state
-        /*if (particle->position.y < particle2->position.y) {
-          if (abs(particle->velocity.y) < GROUNDED_THRESHOLD && abs(particle->velocity.x) < GROUNDED_THRESHOLD) {
-            particle->grounded = true;
-          }
-        } else {
-          if (abs(particle2->velocity.y) < GROUNDED_THRESHOLD && abs(particle2->velocity.x) < GROUNDED_THRESHOLD) {
-            particle2->grounded = true;
-          }
-        }*/
+        //checkGrounded(particle);
 
       }
     }
   }
 }
 
-void dampenVelocity(Particle *particle, float dt) {
-  if (particle->grounded && particle->velocity.y < 0) {
-    particle->velocity.y = 0;
+void checkGrounded(Particle *particle) {
+  float speed = sqrt(pow(particle->velocity.x, 2) + pow(particle->velocity.y, 2));
+  if (speed < GROUNDED_THRESHOLD) {
+    particle->grounded = true;
+    particle->velocity = (Vector2){0, 0};
   }
-  if (particle->grounded) {
-    particle->velocity.x *= (COEFF_FRIC * (dt));
+}
+
+void checkUngrounded(Particle *particle) {
+  if (abs(particle->velocity.x) > 0.0001 || abs(particle->velocity.y) > 0.0001) {
+    particle->grounded = false;
   }
 }
