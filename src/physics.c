@@ -4,8 +4,8 @@
 
 int minX = 0;
 int minY = 0;
-int maxX = 320;
-int maxY = 240;
+int maxX = 0;
+int maxY = 0;
 
 int randRange(int min, int max) {
   return (rand() % (max + 1 - min) + min);
@@ -27,11 +27,10 @@ void initializeParticles() {
 
     particles[i].position = (Vector2){minX + ((maxX-minX) / NUM_PARTICLES) * i + particles[i].radius,
                                       minY + ((maxY-minY) / NUM_PARTICLES) * i + particles[i].radius};
-    particles[i].velocity = (Vector2){200, 10};
+    particles[i].velocity = (Vector2){10, 10};
 
     particles[i].mass     = scale;
     particles[i].grounded = false;
-    particles[i].slowFrames = (Vector2){0, 0};
   }
 }
 

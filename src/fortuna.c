@@ -1,7 +1,6 @@
 #define __AVR_AT90USB1286__
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include <stdlib.h>
 #include <util/delay.h>
 
 #include "fortuna.h"
@@ -19,6 +18,12 @@ void initFortuna() {
 
   DDRE &= ~_BV(PE4) & ~_BV(PE5);  /* Rot. Encoder inputs */
   PORTE |= _BV(PE4) | _BV(PE5);   /* Rot. Encoder pull-ups */
+
+  // Setup center button
+  DDRE  &= ~_BV(PE7);
+  PORTE |= _BV(PE7);
+  EIMSK |= (1<<INT7);
+  EICRB |= (1<<ISC71);
 
 
   /* Timer 0 for switch scan interrupt: */
@@ -41,9 +46,18 @@ void initFortuna() {
   init_lcd(1);
 }
 
-float getTimerDelta() {
+float getTimer() {
   float dt = TCNT1;
+  return dt;
+}
+
+void resetTimer() {
   TCNT1 = 0;
+}
+
+float getTimerDelta() {
+  float dt = getTimer();
+  resetTimer();
   return dt;
 }
 
@@ -71,6 +85,7 @@ ISR( TIMER0_COMPA_vect ) {
     }
 
 }
+
 
 /* read two step encoder */
 int8_t enc_delta() {

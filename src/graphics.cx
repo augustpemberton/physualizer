@@ -38,7 +38,7 @@ double getDT() {
   currentTime = clock();
   deltaTime = (double) (currentTime - previousTime);
   previousTime = currentTime;
-  return deltaTime * 0.000018;
+  return deltaTime * 0.000028;
 }
 
 void handleEvents() {

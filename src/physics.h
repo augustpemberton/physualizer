@@ -3,7 +3,7 @@
 #include "particle.h"
 #endif
 
-#define NUM_PARTICLES 20
+#define NUM_PARTICLES 5
 #define BALL_RADIUS 10
 #define GRAVITY 9.8
 #define GROUNDED_THRESHOLD 0.5

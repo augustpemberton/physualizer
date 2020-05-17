@@ -11,5 +11,4 @@ typedef struct {
   float radius;
   float mass;
   bool grounded;
-  Vector2 slowFrames;
 } Particle;

@@ -10,27 +10,37 @@ int userQuit = 0;
 
 const int STEP_TIMESCALE = 0.3;
 
-void initGraphics(int width, int height) {
+void initGraphics() {
   initFortuna();
 }
 
 double getDT() {
   timescalee -= enc_delta() * STEP_TIMESCALE;
-  deltaTime = (getTimerDelta()/100000) * timescalee;
+  deltaTime = (getTimer()/100000) * timescalee;
   return deltaTime;
 }
 
-void clearParticles(Particle particles[], int n) {
-  for (int i=0; i < n; ++i) {
-    Particle *particle = &particles[i];
-    drawCircle( particle->position.x, particle->position.y, particle->radius, BLACK);
-  }
+void resetDT() {
+  resetTimer();
 }
 
-void drawParticles(Particle particles[], int n) {
+void clearParticle(Particle particle) {
+  drawCircle( particle.position.x, particle.position.y, particle.radius, BLACK);
+}
+
+void drawParticle(Particle particle, uint16_t color) {
+  drawCircle( particle.position.x, particle.position.y, particle.radius, color);
+}
+
+void redrawParticles(Particle oldParticles[], Particle particles[], int n) {
   for (int i=0; i < n; ++i) {
-    Particle *particle = &particles[i];
-    drawCircle( particle->position.x, particle->position.y, particle->radius, WHITE);
+    if (oldParticles[i].position.x != particles[i].position.x &&
+        oldParticles[i].position.y != particles[i].position.y) {
+      cli();
+      clearParticle(oldParticles[i]);
+      drawParticle(particles[i], WHITE);
+      sei();
+    }
   }
 }
 
@@ -42,5 +52,6 @@ void drawBounds(int MIN_X, int MIN_Y, int MAX_X, int MAX_Y) {
 }
 
 void waitForNextFrame() {
+  resetDT();
   _delay_ms(STEP_DELAY);
 }
