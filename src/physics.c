@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include "physics.h"
+#include "audio.h"
 
 int minX = 0;
 int minY = 0;
@@ -17,6 +18,7 @@ void initPhysics(int _minX, int _minY, int _maxX, int _maxY) {
   minY = _minY;
   maxY = _maxY;
   initializeParticles();
+  pwm_init();
 }
 
 void initializeParticles() {
@@ -76,33 +78,41 @@ void applyGravity(Particle *particle, float dt) {
 }
 
 void applyContainerForce(Particle *particle) {
+  bool collided = false;
   if (particle->position.x - particle->radius < minX) {
     particle->velocity.x = -particle->velocity.x * COEFF_REST;
     particle->velocity.y *= COEFF_FRIC;
 
     particle->position.x += particle->radius - (particle->position.x - minX );
+    collided = true;
   }
   if (particle->position.x + particle->radius > maxX) {
     particle->velocity.x = -particle->velocity.x * COEFF_REST;
     particle->velocity.y *= COEFF_FRIC;
 
     particle->position.x -= particle->radius - (maxX - particle->position.x);
+    collided = true;
   }
   if (particle->position.y - particle->radius < minY) {
     particle->velocity.y = -particle->velocity.y * COEFF_REST;
     particle->velocity.x *= COEFF_FRIC;
 
     particle->position.y += particle->radius - (particle->position.y - minY );
+    collided = true;
   }
   if (particle->position.y + particle->radius > maxY) {
     particle->velocity.y = -particle->velocity.y * COEFF_REST;
     particle->velocity.x *= COEFF_FRIC;
 
     particle->position.y -= particle->radius - (maxY - particle->position.y);
-
+    collided = true;
     checkGrounded(particle);
-
   }
+
+  if (collided) {
+    click();
+  }
+
 }
 
 void applyCollisions() {

@@ -16,30 +16,36 @@
 
 #include "src/physics.h"
 
-float timescale = 1.5;
-#define TIMESCALE_STEP 0.0003;
+#include "rios.h"
+#include "ruota.h"
 
 const int MIN_X = 0;
 const int MIN_Y = 0;
 const int MAX_X = 318;
 const int MAX_Y = 238;
 
-Vector2 buttonForce = {100,100};
+int buttonForce = 100;
+void check_switches();
 
 void init(void) {
   initPhysics(MIN_X, MIN_Y, MAX_X, MAX_Y);
   initGraphics();
   srand(time(NULL));
+  os_init_scheduler();
+  os_init_ruota();
 }
 
 int main(void) {
     init();
+
+    os_add_task(check_switches, 50, 1);
+    // main physics loop        
     float dt = 0;
     Particle oldParticles[NUM_PARTICLES];
     while (userQuit == 0) {
+      // store old particles so we can remove them later
       memcpy(oldParticles, particles, sizeof(oldParticles));
       waitForNextFrame();
-      //drawBounds();
 
       // apply collisions 
       for (int i=0; i<1; i++) {
@@ -52,7 +58,7 @@ int main(void) {
 
       // apply forces and draw
       for (int i=0; i<NUM_PARTICLES; ++i) {
-        dt = getDT() * timescale;
+        dt = getDT();
         Particle *particle = &particles[i];
         applyGravity(particle, dt);
 
@@ -75,14 +81,32 @@ int main(void) {
       }
 
       redrawParticles(oldParticles, particles, NUM_PARTICLES);
+      drawForce(buttonForce);
 
     }
     return 0;
 }
 
-ISR( INT7_VECT ) {
-  for (int i=0; i<NUM_PARTICLES; ++i) {
-    particles[i].velocity.x += buttonForce.x;
-    particles[i].velocity.y += buttonForce.y;
+void check_switches() {
+  if (get_switch_press(_BV(SWN))) {
+    for (int i=0; i<NUM_PARTICLES; ++i) {
+      particles[i].velocity.y -= buttonForce;
+    }
   }
+  if (get_switch_press(_BV(SWS))) {
+    for (int i=0; i<NUM_PARTICLES; ++i) {
+      particles[i].velocity.y += buttonForce;
+    }
+  }
+  if (get_switch_press(_BV(SWE))) {
+    for (int i=0; i<NUM_PARTICLES; ++i) {
+      particles[i].velocity.x += buttonForce;
+    }
+  }
+  if (get_switch_press(_BV(SWW))) {
+    for (int i=0; i<NUM_PARTICLES; ++i) {
+      particles[i].velocity.x -= buttonForce;
+    }
+  }
+  buttonForce += os_enc_delta() * 5;
 }

@@ -1,23 +1,16 @@
 #include "graphicsF.h"
 #include "fortuna.h"
 
-float deltaTime;
-float timescalee = 1;
-
 int userQuit = 0;
 
 #define STEP_DELAY 15
-
-const int STEP_TIMESCALE = 0.3;
 
 void initGraphics() {
   initFortuna();
 }
 
 double getDT() {
-  timescalee -= enc_delta() * STEP_TIMESCALE;
-  deltaTime = (getTimer()/100000) * timescalee;
-  return deltaTime;
+  return getTimer()/100000;
 }
 
 void resetDT() {
@@ -34,14 +27,18 @@ void drawParticle(Particle particle, uint16_t color) {
 
 void redrawParticles(Particle oldParticles[], Particle particles[], int n) {
   for (int i=0; i < n; ++i) {
-    if (oldParticles[i].position.x != particles[i].position.x &&
-        oldParticles[i].position.y != particles[i].position.y) {
-      cli();
-      clearParticle(oldParticles[i]);
-      drawParticle(particles[i], WHITE);
-      sei();
-    }
+    cli();
+    clearParticle(oldParticles[i]);
+    drawParticle(particles[i], WHITE);
+    sei();
   }
+}
+
+void drawForce(int force) {
+  char str[80];
+  display_string_xy(str, 10, 10);
+  sprintf(str, "Force: %i   ", force);
+  display_string_xy(str, 10, 10);
 }
 
 void drawBounds(int MIN_X, int MIN_Y, int MAX_X, int MAX_Y) {
@@ -52,6 +49,10 @@ void drawBounds(int MIN_X, int MIN_Y, int MAX_X, int MAX_Y) {
 }
 
 void waitForNextFrame() {
+  double t = 0;
+  t = getTimer();
+  while(t < 50000) {
+    t = getTimer();
+  }
   resetDT();
-  _delay_ms(STEP_DELAY);
 }
