@@ -4,7 +4,7 @@
 #endif
 
 #define NUM_PARTICLES 5
-#define BALL_RADIUS 10
+#define BALL_RADIUS_MULTIPLIER 10
 #define GRAVITY 9.8
 
 // If a particle falls below this velocity it is considered grounded

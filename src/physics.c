@@ -23,7 +23,7 @@ void initializeParticles() {
   float scale;
   for (int i=0; i<NUM_PARTICLES; ++i) {
     scale = (rand() / (double)RAND_MAX) * 3;
-    particles[i].radius   = BALL_RADIUS * scale;
+    particles[i].radius   = BALL_RADIUS_MULTIPLIER * scale;
 
     particles[i].position = (Vector2){minX + ((maxX-minX) / NUM_PARTICLES) * i + particles[i].radius,
                                       minY + ((maxY-minY) / NUM_PARTICLES) * i + particles[i].radius};
