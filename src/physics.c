@@ -1,7 +1,6 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include "physics.h"
-#include "audio.h"
 
 int minX = 0;
 int minY = 0;
@@ -18,7 +17,6 @@ void initPhysics(int _minX, int _minY, int _maxX, int _maxY) {
   minY = _minY;
   maxY = _maxY;
   initializeParticles();
-  pwm_init();
 }
 
 void initializeParticles() {
@@ -35,29 +33,6 @@ void initializeParticles() {
     particles[i].grounded = false;
   }
 }
-
-/*void initializeParticles() {
-  for (int i=0; i<NUM_PARTICLES; ++i) {
-    particles[i].radius   = (1 + i) * 10;
-    particles[i].mass     = 1 + i;
-    particles[i].grounded = false;
-  }
-  //bottom left
-  //particles[0].position = (Vector2){50, 200};
-  //particles[0].velocity = (Vector2){50, -50};
-
-  //bottom right
-  //particles[0].position = (Vector2){200, 200};
-  //particles[0].velocity = (Vector2){-50, -50};
-
-  //top right
-  particles[1].position = (Vector2){200, 50};
-  particles[1].velocity = (Vector2){-50, 50};
-
-  //top left
-  particles[0].position = (Vector2){50, 50};
-  particles[0].velocity = (Vector2){50, 50};
-}*/
 
 Vector2 gravityForce(Particle *particle) {
   return (Vector2){0, particle->mass * GRAVITY};
@@ -110,7 +85,9 @@ void applyContainerForce(Particle *particle) {
   }
 
   if (collided) {
-    click();
+    //click();
+    // This is where you would play audio, but i can't figure out
+    // how to get it working (:
   }
 
 }

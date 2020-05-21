@@ -42,7 +42,7 @@ int main(void) {
     // main physics loop        
     float dt = 0;
     Particle oldParticles[NUM_PARTICLES];
-    while (userQuit == 0) {
+    while (true) {
       // store old particles so we can remove them later
       memcpy(oldParticles, particles, sizeof(oldParticles));
       waitForNextFrame();
@@ -61,20 +61,6 @@ int main(void) {
         dt = getDT();
         Particle *particle = &particles[i];
         applyGravity(particle, dt);
-
-
-        /*
-        if (buttonPressed) {
-          applyForce(particle, (Vector2){0, -30}, dt);
-        }
-        if (speedUpPressed) {
-          timescale += TIMESCALE_STEP;
-        }
-
-        if (slowDownPressed) {
-          timescale -= TIMESCALE_STEP;
-        }
-        */
 
         particle->position.x += particle->velocity.x * dt;
         particle->position.y += particle->velocity.y * dt;
