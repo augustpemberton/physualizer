@@ -37,6 +37,7 @@ void init(void) {
 
 int main(void) {
     init();
+    os_led_brightness(0);
 
     os_add_task(check_switches, 50, 1);
     // main physics loop        
