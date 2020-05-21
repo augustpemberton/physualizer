@@ -1,4 +1,4 @@
-# Physualiser: a particle collision toy
+# Physualizer: a particle collision toy
 
 ## Usage
 Use the fortuna's N,E,S,W buttons to add a force to the particles on screen.
